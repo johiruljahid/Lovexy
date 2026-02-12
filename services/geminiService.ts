@@ -1,8 +1,10 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Fix: initialize GoogleGenAI using process.env.API_KEY directly as per SDK guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize inside functions or with a check to avoid issues with undefined process.env during load
+const getAIClient = () => {
+  return new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+};
 
 export const getModelResponse = async (
   modelName: string, 
@@ -11,6 +13,7 @@ export const getModelResponse = async (
   media?: { data: string; mimeType: string }
 ) => {
   try {
+    const ai = getAIClient();
     const parts: any[] = [];
     
     if (userMessage) {
@@ -25,6 +28,8 @@ export const getModelResponse = async (
         }
       });
     }
+
+    if (parts.length === 0) return "জানু, কিছু তো বলো! ❤️";
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -43,8 +48,8 @@ export const getModelResponse = async (
         temperature: 1.0,
       },
     });
-    // Fix: Access response.text property directly as it is a getter, not a method
-    return response.text;
+
+    return response.text || "দুঃখিত জানু, আমি এখন একটু অন্যমনস্ক হয়ে গিয়েছিলাম। আবার বলো? ❤️";
   } catch (error) {
     console.error("AI Error:", error);
     return "দুঃখিত জানু, আমি এখন একটু ব্যস্ত আছি। কিছুক্ষণ পর আবার চেষ্টা করো! ❤️";
@@ -53,6 +58,7 @@ export const getModelResponse = async (
 
 export const generateModelPersona = async () => {
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: "Generate a profile for a beautiful Bangladeshi model for a chat app. Return the name, age (between 18-25), and a sweet romantic bio in Bengali.",
