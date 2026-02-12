@@ -20,19 +20,19 @@ const Home: React.FC<HomeProps> = ({ models }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {models.map((model) => (
-          <div key={model.id} className="glass-3d rounded-[2.5rem] p-4 flex flex-col group hover:-translate-y-2 transition-transform duration-300 overflow-hidden relative">
+          <div key={model.id} className="glass-3d rounded-[2.5rem] p-4 flex flex-col group transition-all duration-300 overflow-hidden relative">
             {model.isLive && (
-              <div className="absolute top-8 left-8 z-10 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full flex items-center space-x-1 shadow-lg animate-pulse">
+              <div className="absolute top-8 left-8 z-20 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full flex items-center space-x-1 shadow-lg animate-pulse">
                 <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
                 <span>LIVE</span>
               </div>
             )}
             
-            <div className="aspect-[3/4] rounded-[2rem] overflow-hidden shadow-2xl relative mb-6">
+            <div className="aspect-[3/4] rounded-[2rem] overflow-hidden shadow-2xl relative mb-6 glossy-container">
               <img 
                 src={model.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop'} 
                 alt={model.name} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover"
               />
             </div>
 

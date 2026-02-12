@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ModelProfile, User, WithdrawalRequest, PaymentRequest, ExclusiveItem } from '../types';
 import { generateModelPersona } from '../services/geminiService';
+import { REFERRAL_COMMISSION } from '../constants';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -35,14 +36,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newVaultUrl, setNewVaultUrl] = useState('');
   const [newVaultCaption, setNewVaultCaption] = useState('');
 
-  const totalRevenue = paymentRequests.filter(p => p.status === 'approved').reduce((acc, curr) => acc + curr.price, 0);
-  const totalPaidOut = users.reduce((acc, curr) => acc + curr.totalPaid, 0);
+  // Calculate stats accurately
+  const approvedPayments = paymentRequests.filter(p => p.status === 'approved');
+  
+  const totalRevenue = approvedPayments.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0);
+  
+  // Calculate total commission given to referrers
+  const totalCommissionGiven = approvedPayments.reduce((acc, curr) => {
+    if (curr.couponCode) {
+      return acc + (Number(curr.price) * REFERRAL_COMMISSION);
+    }
+    return acc;
+  }, 0);
+
+  const netRevenue = totalRevenue - totalCommissionGiven;
+    
+  const totalPaidOut = users.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
 
   const stats = [
-    { label: 'TOTAL REVENUE', value: `৳ ${totalRevenue}`, color: 'bg-[#6366f1]', textColor: 'text-white' },
-    { label: 'PENDING PAYMENTS', value: paymentRequests.filter(p => p.status === 'pending').length.toString(), color: 'bg-white', textColor: 'text-pink-500' },
-    { label: 'TOTAL PAID', value: `৳ ${totalPaidOut}`, color: 'bg-white', textColor: 'text-emerald-500', border: 'border-r-[12px] border-emerald-400' },
-    { label: 'TOTAL USERS', value: users.length.toString(), color: 'bg-white', textColor: 'text-gray-800' },
+    { label: 'TOTAL REVENUE', value: `৳ ${totalRevenue.toLocaleString()}`, color: 'bg-gradient-to-br from-[#6366f1] to-[#4f46e5]', textColor: 'text-white' },
+    { label: 'NET REVENUE (নিট ইনকাম)', value: `৳ ${Math.floor(netRevenue).toLocaleString()}`, color: 'bg-white', textColor: 'text-pink-600', border: 'border-l-[12px] border-pink-500 shadow-pink-100' },
+    { label: 'TOTAL PAID (উইথড্র)', value: `৳ ${totalPaidOut.toLocaleString()}`, color: 'bg-white', textColor: 'text-emerald-600', border: 'border-r-[12px] border-emerald-500 shadow-emerald-100' },
+    { label: 'TOTAL USERS', value: users.length.toLocaleString(), color: 'bg-white', textColor: 'text-slate-800' },
   ];
 
   const resetForm = (model: ModelProfile | null = null) => {
@@ -162,7 +177,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="bg-white rounded-[3rem] p-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)] flex flex-col md:flex-row items-center justify-between border border-white gap-6">
            <div className="flex items-center space-x-4 ml-4">
              <img src="https://i.ibb.co.com/35CGm9xB/lovexylogo.png" className="w-10 h-10 object-contain" alt="logo" />
-             <h1 className="text-2xl md:text-3xl font-black text-[#0f172a] tracking-tight">Prio <span className="text-pink-50">Admin Panel</span></h1>
+             <h1 className="text-2xl md:text-3xl font-black text-[#0f172a] tracking-tight">Lovexy <span className="text-pink-500">Admin</span></h1>
            </div>
            
            <div className="bg-[#f8fafc] rounded-full p-2 flex items-center space-x-1 border border-gray-100 shadow-inner w-full md:w-auto overflow-x-auto scrollbar-hide">
@@ -184,7 +199,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               {stats.map((stat, i) => (
                 <div key={i} className={`${stat.color} ${stat.border || ''} rounded-[3rem] p-10 flex flex-col justify-center min-h-[220px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/20 transition-transform hover:-translate-y-2`}>
                    <p className={`text-[10px] font-black ${stat.textColor} opacity-60 uppercase tracking-widest mb-4`}>{stat.label}</p>
-                   <h3 className={`text-5xl font-black ${stat.textColor} tracking-tighter`}>{stat.value}</h3>
+                   <h3 className={`text-4xl font-black ${stat.textColor} tracking-tighter`}>{stat.value}</h3>
                 </div>
               ))}
             </div>

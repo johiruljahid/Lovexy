@@ -41,7 +41,7 @@ const ProfileDetails: React.FC<ProfileDetailsProps> = ({ models, unlockedContent
 
       {/* Hero Section */}
       <div className="glass-3d rounded-[3rem] p-4 flex flex-col items-center">
-        <div className="w-full aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl mb-8 relative">
+        <div className="w-full aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl mb-8 relative glossy-container">
            <img 
             src={model.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop'} 
             alt={model.name} 
@@ -49,7 +49,7 @@ const ProfileDetails: React.FC<ProfileDetailsProps> = ({ models, unlockedContent
             onClick={() => setViewingImage(model.avatar)}
            />
            {model.isLive && (
-              <div className="absolute top-6 left-6 z-10 bg-red-600/80 backdrop-blur-md text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl">
+              <div className="absolute top-6 left-6 z-20 bg-red-600/80 backdrop-blur-md text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl">
                 • LIVE NOW
               </div>
            )}
@@ -86,7 +86,7 @@ const ProfileDetails: React.FC<ProfileDetailsProps> = ({ models, unlockedContent
             <div 
               key={idx} 
               onClick={() => setViewingImage(img)}
-              className="glass-3d p-2 rounded-3xl cursor-zoom-in hover:scale-[1.02] transition-transform active:scale-95"
+              className="glass-3d p-2 rounded-3xl cursor-zoom-in hover:scale-[1.02] transition-transform active:scale-95 glossy-container"
             >
               <img src={img} className="w-full h-48 object-cover rounded-2xl shadow-inner" alt={`gallery-${idx}`} />
             </div>
@@ -115,11 +115,11 @@ const ProfileDetails: React.FC<ProfileDetailsProps> = ({ models, unlockedContent
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
             {model.exclusiveContent?.length > 0 ? model.exclusiveContent.map((item: ExclusiveItem, i) => (
               <div key={item.id} className="bg-gray-800/80 border-2 border-gray-700/50 rounded-[2.5rem] overflow-hidden flex flex-col group transition-all duration-500 hover:border-pink-500/50 shadow-xl">
-                 <div className="relative aspect-video overflow-hidden">
+                 <div className="relative aspect-video overflow-hidden glossy-container">
                     {isUnlocked(item.id) ? (
                        <img 
                         src={item.url} 
-                        className="w-full h-full object-cover cursor-zoom-in group-hover:scale-110 transition-transform duration-700" 
+                        className="w-full h-full object-cover cursor-zoom-in" 
                         alt="unlocked" 
                         onClick={() => setViewingImage(item.url)}
                        />

@@ -44,19 +44,17 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const renderHighlightedText = (text: string) => {
     if (!text) return null;
     
-    // Seductive words to highlight in Bengali
     const keywords = [
       'জানু', 'জান', 'সোনা', 'আদর', 'ভালোবাসা', 'ভালোবাসি', 'মিষ্টি', 'আগুন', 
       'রাত', 'গরম', 'শরীর', 'ইচ্ছে', 'পাগল', 'চুমু', 'অপেক্ষা', 'সুইটি', 'জান', 'জানু'
     ];
     
-    // Create regex: (word1|word2|...)
     const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
     const parts = text.split(regex);
     
     return parts.map((part, i) => {
       if (keywords.includes(part.toLowerCase())) {
-        return <span key={i} className="highlight-word px-0.5">{part}</span>;
+        return <span key={i} className="highlight-word">{part}</span>;
       }
       return part;
     });
@@ -141,9 +139,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
            </Link>
            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <img src={model.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop'} className="w-12 h-12 rounded-[1.2rem] object-cover border-2 border-white shadow-lg" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse"></div>
+              <div className="relative glossy-container rounded-[1.2rem] overflow-hidden">
+                <img src={model.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop'} className="w-12 h-12 object-cover border-2 border-white shadow-lg" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse z-20"></div>
               </div>
               <div>
                 <h3 className="font-black text-gray-800 text-base leading-tight">{model.name}</h3>
@@ -164,13 +162,17 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
                <div className={`p-4 rounded-[2rem] shadow-2xl border border-white/40 transition-all ${
                  msg.sender === 'user' 
                   ? 'bg-gradient-to-tr from-pink-500 to-purple-600 text-white rounded-tr-none text-sm font-bold' 
-                  : 'bg-white text-gray-800 rounded-tl-none shadow-pink-100/50 seductive-font text-xl leading-relaxed'
-               }`}>
-                 {msg.mediaType === 'image' && msg.mediaData && <img src={`data:image/jpeg;base64,${msg.mediaData}`} className="rounded-2xl mb-3 shadow-lg max-h-52 w-full object-cover border border-white/20" />}
+                  : 'bg-white text-gray-800 rounded-tl-none shadow-pink-100/50 seductive-font text-xl leading-snug'
+               }`} style={{ wordBreak: 'break-word' }}>
+                 {msg.mediaType === 'image' && msg.mediaData && (
+                   <div className="glossy-container rounded-2xl mb-3 shadow-lg">
+                     <img src={`data:image/jpeg;base64,${msg.mediaData}`} className="max-h-52 w-full object-cover border border-white/20" />
+                   </div>
+                 )}
                  {msg.mediaType === 'audio' && <div className="flex items-center space-x-3 bg-black/10 p-3 rounded-2xl mb-2"><div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-lg">🔊</div><div className="flex space-x-1">{[1,2,3,4,5].map(i => <div key={i} className="w-1 bg-white h-4 rounded-full animate-grow" style={{animationDelay: `${i*0.1}s`}}></div>)}</div></div>}
                  {msg.text && (
                     <div className={msg.sender === 'model' ? 'pt-1' : ''}>
-                      {msg.sender === 'model' ? renderHighlightedText(msg.text) : <p className="leading-relaxed">{msg.text}</p>}
+                      {msg.sender === 'model' ? renderHighlightedText(msg.text) : <p className="leading-snug">{msg.text}</p>}
                     </div>
                  )}
                </div>

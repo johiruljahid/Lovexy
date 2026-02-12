@@ -24,7 +24,21 @@ const Payment: React.FC<PaymentProps> = ({ user, onPaymentRequest }) => {
   const finalPrice = pkg ? (isApplied ? pkg.price - DISCOUNT_AMOUNT : pkg.price) : 0;
 
   const handleApplyCoupon = () => {
-    if (couponCode.trim().length >= 4) {
+    const enteredCode = couponCode.trim().toUpperCase();
+    
+    if (!enteredCode) {
+      alert("কুপন কোড দাও জানু! ❤️");
+      return;
+    }
+
+    // লজিক: নিজের কোড নিজে ব্যবহার করা যাবে না
+    if (enteredCode === user.referralCode.toUpperCase()) {
+      alert("জানু, নিজের কুপন কোড নিজে ব্যবহার করা যাবে না! ডিসকাউন্ট পেতে অন্য কারো রেফারেল কোড ব্যবহার করো। ❤️");
+      setCouponCode('');
+      return;
+    }
+
+    if (enteredCode.length >= 4) {
       setIsApplied(true);
     } else {
       alert("সঠিক কুপন কোড দাও জানু! ❤️");
@@ -121,8 +135,11 @@ const Payment: React.FC<PaymentProps> = ({ user, onPaymentRequest }) => {
       <div className="glass-3d rounded-[3rem] p-8 space-y-6 shadow-2xl relative overflow-hidden bg-white/90 border-2 border-pink-100">
          <div className="text-center space-y-4">
             <div className="flex flex-col items-center justify-center space-y-2">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/BKash_Logo.svg/512px-BKash_Logo.svg.png" className="h-10 object-contain drop-shadow-md" alt="bkash" />
-              <p className="text-[12px] font-black text-pink-500 tracking-widest uppercase">বিকাশ পার্সোনাল নাম্বার</p>
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-pink-400 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/BKash_Logo.svg/512px-BKash_Logo.svg.png" className="h-12 relative object-contain drop-shadow-xl" alt="bkash" />
+              </div>
+              <p className="text-[12px] font-black text-pink-500 tracking-widest uppercase mt-2">বিকাশ পার্সোনাল নাম্বার</p>
             </div>
             <div className="bg-pink-50 rounded-3xl py-6 px-4 border border-pink-100 shadow-inner group transition-all">
               <h3 className="text-4xl font-black text-gray-800 tracking-tighter select-all group-active:scale-95 transition-transform">{BKASH_NUMBER}</h3>
@@ -131,12 +148,15 @@ const Payment: React.FC<PaymentProps> = ({ user, onPaymentRequest }) => {
          </div>
          <button onClick={() => { navigator.clipboard.writeText(BKASH_NUMBER); alert("নাম্বারটি কপি হয়েছে! ❤️"); }} className="mx-auto flex items-center space-x-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-10 py-4 rounded-full text-xs font-black shadow-lg hover:scale-105 active:scale-95 transition-all">
            <span>নাম্বার কপি করুন</span>
-           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 00-2 2v8a2 2 0 002 2v8a2 2 0 002 2z" /></svg>
+           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 00-2 2v8a2 2 0 002 2v8a2 2 0 002 2v8a2 2 0 002 2z" /></svg>
          </button>
       </div>
 
       {/* Payment Details Form */}
       <div className="glass-3d rounded-[3.5rem] p-8 space-y-8 shadow-2xl border-b-[10px] border-pink-100 border-x-2 border-t-2 relative">
+         <div className="absolute top-8 right-8 animate-pulse pointer-events-none opacity-20">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/BKash_Logo.svg/512px-BKash_Logo.svg.png" className="w-12 h-auto" alt="bkash-faded" />
+         </div>
          <div className="space-y-6">
             <div className="space-y-2 px-2">
                <div className="flex items-center space-x-2 ml-4">

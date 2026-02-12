@@ -38,6 +38,7 @@ export const MODELS: ModelProfile[] = [
 ];
 
 export const CREDIT_PACKAGES: CreditPackage[] = [
+  { id: 'p0', credits: 250, price: 249, label: 'শুরু অফার' },
   { id: 'p1', credits: 500, price: 399, label: 'মিষ্টি অফার' },
   { id: 'p2', credits: 1000, price: 799, label: 'জনপ্রিয় অফার', isPopular: true },
   { id: 'p3', credits: 1500, price: 1199, label: 'বিজয় অফার', isKing: true }

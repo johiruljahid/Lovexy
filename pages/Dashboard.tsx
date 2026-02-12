@@ -43,6 +43,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRequestWithdrawal }) => {
     setBkashNum('');
   };
 
+  // Commission calculation for net amount display
+  const netTotalAmount = (user.totalEarnings || 0) + (user.totalPaid || 0);
+
   return (
     <div className="space-y-8 pb-20 animate-in slide-in-from-bottom-5 duration-700">
       {/* Seductive Withdrawal Success Popup */}
@@ -83,10 +86,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRequestWithdrawal }) => {
 
          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
             {[
-              { label: 'ক্রেডিট', val: user.credits + ' ★', col: 'pink' },
-              { label: 'আর্নিং', val: '৳' + user.totalEarnings, col: 'purple' },
-              { label: 'ওয়ালেট', val: '৳' + user.withdrawableAmount, col: 'blue' },
-              { label: 'পেইড', val: '৳' + user.totalPaid, col: 'emerald' }
+              { label: 'ক্রেডিট', val: (user.credits || 0) + ' ★', col: 'pink' },
+              { label: 'নিট ব্যালেন্স', val: '৳' + netTotalAmount, col: 'orange' },
+              { label: 'ওয়ালেট', val: '৳' + (user.withdrawableAmount || 0), col: 'blue' },
+              { label: 'পেইড', val: '৳' + (user.totalPaid || 0), col: 'emerald' }
             ].map((stat, i) => (
               <div key={i} className={`bg-${stat.col}-50 rounded-3xl p-4 border border-${stat.col}-100 flex flex-col items-center shadow-inner`}>
                  <p className={`text-[8px] font-black text-${stat.col}-500 uppercase mb-1`}>{stat.label}</p>
@@ -133,7 +136,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onRequestWithdrawal }) => {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">উত্তোলনের পরিমাণ (অটো-ফিল)</label>
               <div className="relative">
                 <input 
-                   value={`৳ ${user.withdrawableAmount}`}
+                   value={`৳ ${user.withdrawableAmount || 0}`}
                    readOnly
                    className="w-full glass-3d rounded-[2rem] py-5 px-8 text-sm font-black border-pink-50 bg-gray-50/50 text-pink-600 shadow-inner cursor-not-allowed" 
                 />
