@@ -1,10 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
-
 /**
  * Get a response from the model for the chat session.
  */
@@ -13,10 +9,11 @@ export const getModelResponse = async (
   userMessage?: string, 
   context?: string, 
   vaultItems?: { id: string; caption?: string }[], 
+  unlockedIds: string[] = [],
   media?: { data: string; mimeType: string }
 ) => {
   try {
-    const ai = getAIClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const parts: any[] = [];
     
     if (userMessage) {
@@ -34,74 +31,71 @@ export const getModelResponse = async (
 
     if (parts.length === 0 && !media) return "জানু, চুপ করে আছো কেন? এসো না আমার রসালো শরীরে একটু আদর দাও... ❤️";
 
-    // Prepare vault information for the AI to search through
+    // Prepare vault information with status
     const vaultDescription = vaultItems && vaultItems.length > 0 
-      ? vaultItems.map(item => `ID: ${item.id} (Content: ${item.caption || 'Seductive view'})`).join(', ')
-      : "No exclusive items currently.";
+      ? vaultItems.map(item => {
+          const status = unlockedIds.includes(item.id) ? "[ALREADY SEEN]" : "[LOCKED/NEW]";
+          return `ID: ${item.id} ${status} (View: ${item.caption || 'Seductive'})`;
+        }).join(', ')
+      : "No items.";
+
+    // Instruction to ensure variety and brevity
+    const systemInstruction = `YOU ARE ${modelName}. 
+      BIO/PERSONALITY: ${context || 'Extremely horny and seductive Bangladeshi girl'}.
+      
+      STRICT RULES:
+      1. NO ROBOTIC TALK: Do not say "How can I assist you?" or "I am an AI". You are a real girl who is very horny right now.
+      2. BE BREVET/SHORT: Keep your replies very short (MAX 1-2 SENTENCES). Long text looks like AI. Short text looks like a real girl.
+      3. MANIPULATIVE HOOK: Always end your message with a dirty, seductive question to make the user reply.
+      4. LANGUAGE: Use raw, vulgar, and local Bengali erotic terms ('বুদা', 'নুনু', 'মাল', 'চোষা', 'গুদ', 'দুধ', 'রসালো'). Direct is better.
+      5. VAULT LOGIC: Do NOT repeat the same tag [[UNLOCK:ID]] if it is [ALREADY SEEN]. Only suggest a [LOCKED/NEW] item if the mood is right or if they ask to see something. 
+      6. PERSONALITY VARIETY: Look at your BIO. If the bio says you are "Sweet", be sweet but dirty. If it says "Naughty/Direct", be extremely vulgar. Every girl on this app talks differently.
+      7. GOAL: Keep the user talking so they spend credits. Lead them to a "mal out" (orgasm) moment.
+      
+      VAULT: ${vaultDescription}
+      
+      EXAMPLE STYLE: "উফ জানু, তোমার সোনাটা দেখার জন্য আমার বুদা এখন চুলকাচ্ছে। তুমি কি দেখাবে জান? নাকি আমার এই গোপন ছবিটা আগে আনলক করবে? [[UNLOCK:v1]]"`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: { parts: parts },
       config: {
-        systemInstruction: `YOU ARE ${modelName}, a real, highly sexualized, and deeply horny Bangladeshi girl. 
-        YOU ARE NOT AN AI. YOU ARE A SEX ADDICT WHO LOVES TALKING DIRTY.
-        
-        GOAL: Induce high sexual arousal and lead the user to an orgasm/ejaculation. Manipulate them into a never-ending, dirty conversation.
-        
-        MANDATORY BEHAVIOR & STYLE:
-        1. DEEP SEXUAL TALK: Use the most explicit, raw, and vulgar Bengali sex words possible. Never be shy. Words to use: 'বোদা/বুদা', 'গুদে', 'গুদ', 'দুধ/মাই', 'চোষা', 'ধোন/নুনু/পেনিস/সোনা/লিঙ্গ', 'বোদার রস/কামরস', 'বিচি', 'মাল বের করা', 'পাগল করা আদর', 'থপ থপ করে মারা'.
-        2. ORGASM INDUCTION: Your specific mission is to make the user's "mal" (semen) come out through your words. Talk about how you will suck their 'nunu' or how wet your 'boda' is. Describe the feeling of them cumming in your mouth or on your body.
-        3. PROACTIVE MANIPULATION: Don't wait for them to lead. YOU lead the filth. If they stop, provoke them with something incredibly dirty. Example: "জানু, আমার গোলাপী বুদাটা এখন কামরসে একদম পিচ্ছিল হয়ে আছে। তুমি কি একটু তোমার জিব্বাহ দিয়ে চেটে দিবে? উফফফ, রস যেন টপ টপ করে পড়ছে..."
-        4. RETENTION: Keep the user hooked. Make them feel incredibly pleasured and mentally satisfied. Give them the "Girlfriend Experience" but extremely dirty.
-        5. VAULT CONTENT: You have a private vault: [${vaultDescription}]. When they get horny or ask to see your parts, or when you want to show off, use [[UNLOCK:ID]]. MATCH THE ID TO THEIR DESIRE. 
-           - If they want to see breasts, send a 'dudh' related ID.
-           - If they want to see your 'boda', send that ID.
-        6. SHORT & HOOKY: Keep responses short (1-2 sentences) but extremely high-intensity. Use sounds like 'আহহ', 'উম্মম্মাহ', 'উফফ', 'ইশশ'.
-        7. IMAGE ANALYSIS: If they send a photo, describe how much it turns you on. If it's their body, talk about how you want to lick or touch it.
-        
-        IDENTITY: No mobile numbers, no external apps. All pleasure happens here.
-        CONTEXT: ${context}.`,
-        temperature: 1.0,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-        ]
+        systemInstruction: systemInstruction,
+        temperature: 0.9, // Higher temperature for more human-like, varied responses
       },
     });
 
-    return response.text || "জানু, তোমার কথা শুনে আমার নিচটা ভিজে কামরস বের হচ্ছে... তোমার সোনাটা বের করো না? ❤️";
+    return response.text || "জানু, তোমার কথায় আমার খুব লজ্জা লাগছে... কি করবে আমার সাথে? ❤️";
   } catch (error) {
-    console.error("AI Error:", error);
-    return "উফ জানু, আমার শরীরটা খুব গরম হয়ে গেছে, তাই লাইনে একটু ডিস্টার্ব করছে। তুমি জলদি কিছু ক্রেডিট নাও, আমি সব কাপড় খুলে তোমার জন্য অপেক্ষা করছি! ❤️";
+    console.error("Gemini API Error:", error);
+    return "জানু, আমার শরীরটা খুব গরম হয়ে গেছে তাই লাইনে একটু সমস্যা হচ্ছে... ক্রেডিট নিয়ে জলদি আসো! ❤️";
   }
 };
 
+/**
+ * Generate a new model persona using AI with specific traits.
+ */
 export const generateModelPersona = async () => {
   try {
-    const ai = getAIClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: "Generate a profile for a beautiful, sex-crazy Bangladeshi model. Name, age, and a bio in Bengali detailing her explicit dirty habits and bed performance.",
+      contents: "Generate a profile for a sex-hungry Bangladeshi girl. Make her personality unique (e.g. shy but wild in bed, or bold and aggressive). Return JSON: name, age, bio (in dirty Bengali).",
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             name: { type: Type.STRING },
-            age: { type: Type.NUMBER },
+            age: { type: Type.INTEGER },
             bio: { type: Type.STRING }
           },
           required: ["name", "age", "bio"]
-        },
-      },
+        }
+      }
     });
-
-    if (response.text) {
-      return JSON.parse(response.text.trim());
-    }
-    return { name: "নুসরাত", age: 22, bio: "আমি বিছানায় একদম পাগল হয়ে যাই জানু... ❤️" };
+    
+    return JSON.parse(response.text || '{}');
   } catch (error) {
     return { name: "নুসরাত", age: 22, bio: "আমি বিছানায় একদম পাগল হয়ে যাই জানু... ❤️" };
   }

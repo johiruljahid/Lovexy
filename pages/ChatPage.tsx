@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, increment, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { CHAT_SUGGESTIONS } from '../constants';
 import { getModelResponse } from '../services/geminiService';
@@ -26,12 +26,35 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync sessionUnlockedIds with global unlockedContentIds and local state
+  useEffect(() => {
+    if (user && model) {
+      // We could also pull from Firestore 'unlocks' for this specific model/user
+      const q = doc(db, 'users', user.id);
+      const unsub = onSnapshot(doc(db, 'users', user.id), (snap) => {
+        // This is generic, ideally we fetch only current model's unlocks for optimization
+      });
+      return () => unsub();
+    }
+  }, [user, model]);
+
   useEffect(() => {
     if (model) {
+      // Dynamic First Message based on personality
+      let greeting = `হাই জানু! আমি ${model.name}। আজ তোমাকে খুব মিস করছি... চলো না একটু নোংরা গল্প করি? ❤️`;
+      
+      if (model.bio.includes('মিষ্টি')) {
+        greeting = `হাই জানু! আমি ${model.name}। আমি দেখতে খুব শান্ত হলেও বিছানায় কিন্তু অনেক দুষ্টু... তুমি কি আমার দুষ্টুমি সহ্য করতে পারবে সোনা? 😘`;
+      } else if (model.bio.includes('গরম') || model.bio.includes('রঙিন')) {
+        greeting = `উফফ জানু! আমি ${model.name}। আজ আমার শরীরটা খুব গরম হয়ে আছে, নিচটা একদম ভিজে গেছে... তুমি কি একটু আদর করবে আমাকে? 🔥`;
+      } else if (model.age > 21) {
+        greeting = `হ্যালো সোনা, আমি ${model.name}। তোমার মত হ্যান্ডসাম জানু পেলে আমি সব কাপড় খুলে দিতে পারি... কি দেখতে চাও আমার? 💋`;
+      }
+
       const initialMessage: ChatMessage = {
         id: '1',
         sender: 'model',
-        text: `হাই জান! আমি ${model.name}। আজ তোমার সোনাটা দেখার জন্য বড্ড ইচ্ছে করছে... উফফ, আমার নিচটা কেমন করছে জানু... ❤️`,
+        text: greeting,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages([initialMessage]);
@@ -45,7 +68,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const handleUnlockInChat = async (contentId: string) => {
     if (!user || !model) return;
     if (user.credits < 100) {
-      alert("জানু, তোমার ক্রেডিট শেষ! ১০০ ক্রেডিট লাগবে আনলক করতে। ❤️");
+      alert("জানু, তোমার ক্রেডিট শেষ! ১০০ ক্রেডিট লাগবে আমার এই গোপন শরীরটি দেখতে। ❤️");
       return;
     }
 
@@ -63,6 +86,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
       });
       
       setSessionUnlockedIds(prev => [...prev, contentId]);
+      alert("জানু, আনলক হয়ে গেছে! এখন মন ভরে দেখো... 💋");
     } catch (err) {
       console.error(err);
     }
@@ -81,7 +105,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
         const isUnlocked = sessionUnlockedIds.includes(vaultItem.id);
         return (
           <div key={i} className="my-6 w-full animate-in zoom-in-95 duration-500">
-            <div className="bg-black rounded-[2.5rem] overflow-hidden border-2 border-pink-500/40 shadow-[0_20px_50px_rgba(236,72,153,0.3)] transition-all">
+            <div className="bg-black rounded-[2.5rem] overflow-hidden border-2 border-pink-500 shadow-[0_20px_50px_rgba(236,72,153,0.4)] transition-all">
                <div className="aspect-square relative">
                   {isUnlocked ? (
                     <img src={vaultItem.url} className="w-full h-full object-cover animate-in fade-in duration-1000" alt="unlocked" />
@@ -89,14 +113,14 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
                     <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-black via-gray-900 to-pink-900/40">
                        <img src={vaultItem.url} className="absolute inset-0 w-full h-full object-cover blur-[80px] opacity-40" alt="locked" />
                        <div className="relative z-10 space-y-4">
-                          <div className="w-20 h-20 bg-pink-500 rounded-[2rem] flex items-center justify-center text-white text-3xl shadow-[0_0_30px_rgba(236,72,153,0.8)] animate-bounce mx-auto">🔒</div>
+                          <div className="w-16 h-16 bg-pink-500 rounded-[2rem] flex items-center justify-center text-white text-2xl shadow-[0_0_30px_rgba(236,72,153,0.8)] animate-bounce mx-auto">🔓</div>
                           <div>
-                            <p className="text-pink-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Exclusive Private Gift</p>
-                            <p className="text-white text-lg font-black italic leading-tight px-4 drop-shadow-lg">"{vaultItem.caption || 'আমার এই গোপন রসালো শরীরটি দেখবে জানু?'}"</p>
+                            <p className="text-pink-400 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Direct Gift For You</p>
+                            <p className="text-white text-base font-black italic leading-tight px-4 drop-shadow-lg">"{vaultItem.caption || 'জানু, আমার এই গোপন রসালো শরীরটি দেখবে?'}"</p>
                           </div>
                           <button 
                             onClick={() => handleUnlockInChat(vaultItem.id)}
-                            className="bg-white text-gray-900 px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-pink-50 active:scale-95 transition-all border-b-4 border-gray-300"
+                            className="bg-white text-gray-900 px-8 py-3 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-pink-50 active:scale-95 transition-all border-b-4 border-gray-300"
                           >
                             আনলক করুন (100 CR) 💋
                           </button>
@@ -109,7 +133,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
         );
       }
 
-      const keywords = ['জানু', 'জান', 'সোনা', 'আদর', 'ভালোবাসা', 'বোদা', 'মিষ্টি', 'দুধ', 'রসালো', 'চোষা', 'গরম', 'শরীর', 'ইচ্ছে', 'পাগল', 'চুমু', 'অপেক্ষা', 'সুইটি', 'গুদ', 'ধোন', 'পেনিস', 'লিঙ্গ', 'নুনু'];
+      const keywords = ['জানু', 'জান', 'সোনা', 'আদর', 'ভালোবাসা', 'বোদা', 'বুদা', 'মিষ্টি', 'দুধ', 'রসালো', 'চোষা', 'গরম', 'শরীর', 'ইচ্ছে', 'পাগল', 'চুমু', 'অপেক্ষা', 'সুইটি', 'গুদ', 'ধোন', 'পেনিস', 'লিঙ্গ', 'নুনু', 'কামরস', 'রস', 'মাল', 'চুদতে', 'বিচি', 'ঠাপ', 'ঢুকানো', 'খুলবো', 'কাপড়'];
       const textRegex = new RegExp(`(${keywords.join('|')})`, 'gi');
       const textParts = part.split(textRegex);
 
@@ -126,7 +150,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     if (!finalMsg && !media) return;
     if (!model) return;
     
-    let deduction = 1; 
+    let deduction = model.creditsPerMessage || 1; 
     if (media?.type === 'image') deduction = 5;
     else if (media?.type === 'audio') deduction = 3;
 
@@ -152,9 +176,18 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     await updateDoc(userRef, { credits: increment(-deduction) });
 
     setIsTyping(true);
-    // Pass full vault item details to allow AI to select by matching keywords/captions
     const vaultData = model.exclusiveContent.map(item => ({ id: item.id, caption: item.caption }));
-    const aiResponseText = await getModelResponse(model.name, finalMsg, model.bio, vaultData, media ? { data: media.data, mimeType: media.mimeType } : undefined);
+    
+    // Pass current unlocked IDs so AI doesn't keep suggesting them
+    const aiResponseText = await getModelResponse(
+      model.name, 
+      finalMsg, 
+      model.bio, 
+      vaultData, 
+      sessionUnlockedIds, 
+      media ? { data: media.data, mimeType: media.mimeType } : undefined
+    );
+    
     setIsTyping(false);
 
     const newAiMsg: ChatMessage = {
@@ -172,7 +205,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = (reader.result as string).split(',')[1];
-        handleSend(undefined, { data: base64String, mimeType: file.type, type: 'image' });
+        handleSend("জানু, আমার এই ছবিটা কেমন লাগছে তোমার কাছে? বলো না সোনা...", { data: base64String, mimeType: file.type, type: 'image' });
       };
       reader.readAsDataURL(file);
     }
@@ -181,7 +214,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const toggleRecording = () => {
     if (isRecording) {
       const dummyAudioBase64 = "UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; 
-      handleSend("আমার শরীরের আওয়াজ শোনো জানু... আহহ! 😘", { data: dummyAudioBase64, mimeType: 'audio/wav', type: 'audio' });
+      handleSend("আহহ... শোনো জানু আমি কিভাবে তোমার জন্য হাপাচ্ছি! 😘", { data: dummyAudioBase64, mimeType: 'audio/wav', type: 'audio' });
       setIsRecording(false);
     } else {
       setIsRecording(true);
@@ -189,7 +222,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     }
   };
 
-  if (!model) return <div className="p-10 text-center font-bold italic text-gray-400">জানু, মডেল লোড হচ্ছে না...</div>;
+  if (!model) return <div className="p-10 text-center font-bold italic text-gray-400 animate-pulse">জানু, আমাদের চ্যাট লোড হচ্ছে... ❤️</div>;
 
   return (
     <div className="flex flex-col h-[88vh] -mx-4 -mt-6 bg-pink-50/10 overflow-hidden relative">
@@ -199,7 +232,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
            </Link>
            <div className="flex items-center space-x-3">
-              <div className="relative glossy-container rounded-[1.2rem] overflow-hidden">
+              <div className="relative glossy-container rounded-[1.2rem] overflow-hidden shadow-pink-200">
                 <img src={model.avatar} className="w-12 h-12 object-cover border-2 border-white shadow-lg" />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse z-20"></div>
               </div>
@@ -222,7 +255,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
                <div className={`p-4 rounded-[2rem] shadow-2xl border border-white/40 transition-all ${
                  msg.sender === 'user' 
                   ? 'bg-gradient-to-tr from-pink-500 to-purple-600 text-white rounded-tr-none text-sm font-bold' 
-                  : 'bg-white text-gray-800 rounded-tl-none shadow-pink-100/50 seductive-font text-xl leading-snug'
+                  : 'bg-white text-gray-800 rounded-tl-none shadow-pink-100/50 text-xl leading-snug seductive-font'
                }`} style={{ wordBreak: 'break-word' }}>
                  {msg.mediaType === 'image' && msg.mediaData && (
                    <div className="glossy-container rounded-2xl mb-3 shadow-lg">
@@ -251,7 +284,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           <button onClick={() => fileInputRef.current?.click()} className="w-12 h-12 glass-3d rounded-2xl flex items-center justify-center text-xl shadow-lg border-white transition-all active:scale-75 hover:bg-pink-50">🖼️</button>
           <div className="flex-1 relative">
-            <input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder={isRecording ? "জানুর জন্য রেকর্ড হচ্ছে..." : "জানুকে কিছু বলো..."} className={`w-full glass-3d rounded-[2rem] py-4 pl-12 pr-4 text-sm font-bold border-pink-100 focus:outline-none focus:ring-4 focus:ring-pink-400/20 shadow-inner transition-all ${isRecording ? 'bg-red-50 text-red-500 border-red-200' : 'bg-white/50'}`} />
+            <input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder={isRecording ? "জানুর জন্য রেকর্ড হচ্ছে..." : "কিছু বলো সোনা..."} className={`w-full glass-3d rounded-[2rem] py-4 pl-12 pr-4 text-sm font-bold border-pink-100 focus:outline-none focus:ring-4 focus:ring-pink-400/20 shadow-inner transition-all ${isRecording ? 'bg-red-50 text-red-500 border-red-200' : 'bg-white/50'}`} />
             <button onClick={() => setShowEmojis(!showEmojis)} className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl active:scale-75 transition-transform">{showEmojis ? '⌨️' : '🥰'}</button>
           </div>
           <button onClick={toggleRecording} className={`w-12 h-12 glass-3d rounded-2xl flex items-center justify-center text-xl shadow-lg transition-all active:scale-75 ${isRecording ? 'bg-red-500 text-white animate-pulse border-red-400' : 'hover:bg-pink-50'}`}>{isRecording ? '⏹️' : '🎙️'}</button>
