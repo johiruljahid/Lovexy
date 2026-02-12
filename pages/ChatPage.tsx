@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { doc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { CHAT_SUGGESTIONS } from '../constants';
 import { getModelResponse } from '../services/geminiService';
-import { User, ChatMessage, ModelProfile } from '../types';
+import { User, ChatMessage, ModelProfile, ExclusiveItem } from '../types';
 
 interface ChatPageProps {
   user: User;
   models: ModelProfile[];
+  unlockedContentIds?: string[];
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
@@ -20,6 +21,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [sessionUnlockedIds, setSessionUnlockedIds] = useState<string[]>([]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,7 +31,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
       const initialMessage: ChatMessage = {
         id: '1',
         sender: 'model',
-        text: `হাই জান! আমি ${model.name}। আজ তোমার কথা শুনতে আর তোমাকে দেখতে বড্ড ইচ্ছে করছে... ❤️`,
+        text: `হাই জান! আমি ${model.name}। আজ তোমার সোনাটা দেখার জন্য বড্ড ইচ্ছে করছে... উফফ, আমার নিচটা কেমন করছে জানু... ❤️`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages([initialMessage]);
@@ -40,23 +42,82 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Helper to highlight words in Bengali
-  const renderHighlightedText = (text: string) => {
-    if (!text) return null;
-    
-    const keywords = [
-      'জানু', 'জান', 'সোনা', 'আদর', 'ভালোবাসা', 'ভালোবাসি', 'মিষ্টি', 'আগুন', 
-      'রাত', 'গরম', 'শরীর', 'ইচ্ছে', 'পাগল', 'চুমু', 'অপেক্ষা', 'সুইটি', 'জান', 'জানু'
-    ];
-    
-    const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
-    const parts = text.split(regex);
+  const handleUnlockInChat = async (contentId: string) => {
+    if (!user || !model) return;
+    if (user.credits < 100) {
+      alert("জানু, তোমার ক্রেডিট শেষ! ১০০ ক্রেডিট লাগবে আনলক করতে। ❤️");
+      return;
+    }
+
+    try {
+      const unlockId = `${user.id}_${contentId}`;
+      await setDoc(doc(db, 'unlocks', unlockId), {
+        userId: user.id,
+        contentId,
+        modelId: model.id,
+        timestamp: new Date().toISOString()
+      });
+
+      await updateDoc(doc(db, 'users', user.id), {
+        credits: increment(-100)
+      });
+      
+      setSessionUnlockedIds(prev => [...prev, contentId]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const renderMessageContent = (msg: ChatMessage) => {
+    if (!msg.text) return null;
+
+    const unlockRegex = /\[\[UNLOCK:([\w\d_]+)\]\]/g;
+    const parts = msg.text.split(unlockRegex);
     
     return parts.map((part, i) => {
-      if (keywords.includes(part.toLowerCase())) {
-        return <span key={i} className="highlight-word">{part}</span>;
+      const vaultItem = model?.exclusiveContent.find(item => item.id === part);
+      
+      if (vaultItem) {
+        const isUnlocked = sessionUnlockedIds.includes(vaultItem.id);
+        return (
+          <div key={i} className="my-6 w-full animate-in zoom-in-95 duration-500">
+            <div className="bg-black rounded-[2.5rem] overflow-hidden border-2 border-pink-500/40 shadow-[0_20px_50px_rgba(236,72,153,0.3)] transition-all">
+               <div className="aspect-square relative">
+                  {isUnlocked ? (
+                    <img src={vaultItem.url} className="w-full h-full object-cover animate-in fade-in duration-1000" alt="unlocked" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-black via-gray-900 to-pink-900/40">
+                       <img src={vaultItem.url} className="absolute inset-0 w-full h-full object-cover blur-[80px] opacity-40" alt="locked" />
+                       <div className="relative z-10 space-y-4">
+                          <div className="w-20 h-20 bg-pink-500 rounded-[2rem] flex items-center justify-center text-white text-3xl shadow-[0_0_30px_rgba(236,72,153,0.8)] animate-bounce mx-auto">🔒</div>
+                          <div>
+                            <p className="text-pink-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Exclusive Private Gift</p>
+                            <p className="text-white text-lg font-black italic leading-tight px-4 drop-shadow-lg">"{vaultItem.caption || 'আমার এই গোপন রসালো শরীরটি দেখবে জানু?'}"</p>
+                          </div>
+                          <button 
+                            onClick={() => handleUnlockInChat(vaultItem.id)}
+                            className="bg-white text-gray-900 px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-pink-50 active:scale-95 transition-all border-b-4 border-gray-300"
+                          >
+                            আনলক করুন (100 CR) 💋
+                          </button>
+                       </div>
+                    </div>
+                  )}
+               </div>
+            </div>
+          </div>
+        );
       }
-      return part;
+
+      const keywords = ['জানু', 'জান', 'সোনা', 'আদর', 'ভালোবাসা', 'বোদা', 'মিষ্টি', 'দুধ', 'রসালো', 'চোষা', 'গরম', 'শরীর', 'ইচ্ছে', 'পাগল', 'চুমু', 'অপেক্ষা', 'সুইটি', 'গুদ', 'ধোন', 'পেনিস', 'লিঙ্গ', 'নুনু'];
+      const textRegex = new RegExp(`(${keywords.join('|')})`, 'gi');
+      const textParts = part.split(textRegex);
+
+      return (
+        <span key={i}>
+          {textParts.map((tp, ti) => keywords.includes(tp.toLowerCase()) ? <span key={ti} className="highlight-word">{tp}</span> : tp)}
+        </span>
+      );
     });
   };
 
@@ -66,14 +127,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     if (!model) return;
     
     let deduction = 1; 
-    if (media?.type === 'image') {
-      deduction = 5;
-    } else if (media?.type === 'audio') {
-      deduction = 3;
-    }
+    if (media?.type === 'image') deduction = 5;
+    else if (media?.type === 'audio') deduction = 3;
 
     if (user.credits < deduction) {
-      alert(`জানু, তোমার তো ক্রেডিট শেষ! এই মেসেজটির জন্য ${deduction} ক্রেডিট লাগবে। আগে ক্রেডিট নিয়ে নাও। ❤️`);
+      alert(`জানু, তোমার ক্রেডিট শেষ! এই মেসেজটির জন্য ${deduction} ক্রেডিট লাগবে। ❤️`);
       return;
     }
 
@@ -94,7 +152,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     await updateDoc(userRef, { credits: increment(-deduction) });
 
     setIsTyping(true);
-    const aiResponseText = await getModelResponse(model.name, finalMsg, model.bio, media ? { data: media.data, mimeType: media.mimeType } : undefined);
+    // Pass full vault item details to allow AI to select by matching keywords/captions
+    const vaultData = model.exclusiveContent.map(item => ({ id: item.id, caption: item.caption }));
+    const aiResponseText = await getModelResponse(model.name, finalMsg, model.bio, vaultData, media ? { data: media.data, mimeType: media.mimeType } : undefined);
     setIsTyping(false);
 
     const newAiMsg: ChatMessage = {
@@ -121,7 +181,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const toggleRecording = () => {
     if (isRecording) {
       const dummyAudioBase64 = "UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; 
-      handleSend("ভয়েসটা শোনো জানু... 😘", { data: dummyAudioBase64, mimeType: 'audio/wav', type: 'audio' });
+      handleSend("আমার শরীরের আওয়াজ শোনো জানু... আহহ! 😘", { data: dummyAudioBase64, mimeType: 'audio/wav', type: 'audio' });
       setIsRecording(false);
     } else {
       setIsRecording(true);
@@ -140,7 +200,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
            </Link>
            <div className="flex items-center space-x-3">
               <div className="relative glossy-container rounded-[1.2rem] overflow-hidden">
-                <img src={model.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop'} className="w-12 h-12 object-cover border-2 border-white shadow-lg" />
+                <img src={model.avatar} className="w-12 h-12 object-cover border-2 border-white shadow-lg" />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse z-20"></div>
               </div>
               <div>
@@ -170,11 +230,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
                    </div>
                  )}
                  {msg.mediaType === 'audio' && <div className="flex items-center space-x-3 bg-black/10 p-3 rounded-2xl mb-2"><div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-lg">🔊</div><div className="flex space-x-1">{[1,2,3,4,5].map(i => <div key={i} className="w-1 bg-white h-4 rounded-full animate-grow" style={{animationDelay: `${i*0.1}s`}}></div>)}</div></div>}
-                 {msg.text && (
-                    <div className={msg.sender === 'model' ? 'pt-1' : ''}>
-                      {msg.sender === 'model' ? renderHighlightedText(msg.text) : <p className="leading-snug">{msg.text}</p>}
-                    </div>
-                 )}
+                 <div className={msg.sender === 'model' ? 'pt-1' : ''}>
+                   {renderMessageContent(msg)}
+                 </div>
                </div>
                <p className="text-[8px] font-black text-gray-400 mt-2 px-2 tracking-widest uppercase">{msg.timestamp}</p>
             </div>
@@ -200,11 +258,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
           <button onClick={() => handleSend()} className="w-14 h-14 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-3xl flex items-center justify-center text-white shadow-2xl transition-all active:scale-90 btn-3d hover:brightness-110"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg></button>
         </div>
       </div>
-      <style>{`
-        @keyframes grow { 0%, 100% { height: 8px; } 50% { height: 20px; } }
-        .animate-grow { animation: grow 0.8s ease-in-out infinite; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-      `}</style>
     </div>
   );
 };

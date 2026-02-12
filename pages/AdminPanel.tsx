@@ -403,6 +403,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             {gallery.map((url, i) => (
                               <div key={i} onClick={() => setViewingImage(url)} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group cursor-zoom-in">
                                 <img src={url} className="w-full h-full object-cover" alt="gallery" />
+                                {/* Fixed: passed setGallery instead of undefined setList */}
                                 <button onClick={(e) => removeItem(e, gallery, setGallery, i)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">✕</button>
                               </div>
                             ))}
