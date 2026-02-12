@@ -1,6 +1,6 @@
 {
-  "name": "Lovexy - Premium AI Chat",
-  "description": "A luxury 3D-styled social platform featuring AI-powered conversations, model profiles, and a robust referral system for the Bangladeshi community.",
+  "name": "Lovexy",
+  "description": "A luxury styled social platform featuring AI-powered conversations, model profiles, and a robust referral system for the Bangladeshi community.",
   "requestFramePermissions": [
     "camera",
     "microphone"
