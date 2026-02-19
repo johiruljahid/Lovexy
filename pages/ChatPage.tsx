@@ -4,7 +4,8 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, updateDoc, increment, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { CHAT_SUGGESTIONS } from '../constants';
-import { getModelResponse } from '../services/geminiService';
+import { getModelResponse, getModelResponseStream } from '../services/geminiService';
+import { GenerateContentResponse } from '@google/genai';
 import { User, ChatMessage, ModelProfile, ExclusiveItem } from '../types';
 
 interface ChatPageProps {
@@ -26,29 +27,17 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync sessionUnlockedIds with global unlockedContentIds and local state
-  useEffect(() => {
-    if (user && model) {
-      // We could also pull from Firestore 'unlocks' for this specific model/user
-      const q = doc(db, 'users', user.id);
-      const unsub = onSnapshot(doc(db, 'users', user.id), (snap) => {
-        // This is generic, ideally we fetch only current model's unlocks for optimization
-      });
-      return () => unsub();
-    }
-  }, [user, model]);
-
   useEffect(() => {
     if (model) {
-      // Dynamic First Message based on personality
+      // Dynamic First Message based on personality from Bio
       let greeting = `হাই জানু! আমি ${model.name}। আজ তোমাকে খুব মিস করছি... চলো না একটু নোংরা গল্প করি? ❤️`;
       
-      if (model.bio.includes('মিষ্টি')) {
-        greeting = `হাই জানু! আমি ${model.name}। আমি দেখতে খুব শান্ত হলেও বিছানায় কিন্তু অনেক দুষ্টু... তুমি কি আমার দুষ্টুমি সহ্য করতে পারবে সোনা? 😘`;
-      } else if (model.bio.includes('গরম') || model.bio.includes('রঙিন')) {
-        greeting = `উফফ জানু! আমি ${model.name}। আজ আমার শরীরটা খুব গরম হয়ে আছে, নিচটা একদম ভিজে গেছে... তুমি কি একটু আদর করবে আমাকে? 🔥`;
-      } else if (model.age > 21) {
-        greeting = `হ্যালো সোনা, আমি ${model.name}। তোমার মত হ্যান্ডসাম জানু পেলে আমি সব কাপড় খুলে দিতে পারি... কি দেখতে চাও আমার? 💋`;
+      if (model.bio.includes('মিষ্টি') || model.bio.includes('লাজুক')) {
+        greeting = `উফ জানু! আমি ${model.name}। আমি দেখতে খুব শান্ত হলেও মনে মনে কিন্তু অনেক দুষ্টু... তুমি কি আজ আমার দুষ্টুমি সহ্য করবে? 😘`;
+      } else if (model.bio.includes('গরম') || model.bio.includes('বন্য') || model.bio.includes('সরাসরি')) {
+        greeting = `হাই সোনা! আমি ${model.name}। আজ আমার শরীরটা খুব গরম হয়ে আছে, নিচটা একদম ভিজে গেছে... তুমি কি একটু আদর করবে আমাকে? 🔥`;
+      } else if (model.bio.includes('অভিজ্ঞ') || model.bio.includes('মায়ায়')) {
+        greeting = `হ্যালো জানু, আমি ${model.name}। তোমার মত হ্যান্ডসাম জানু পেলে আমি সব কাপড় খুলে দিতে পারি... কি দেখতে চাও আমার আজ? 💋`;
       }
 
       const initialMessage: ChatMessage = {
@@ -115,7 +104,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
                        <div className="relative z-10 space-y-4">
                           <div className="w-16 h-16 bg-pink-500 rounded-[2rem] flex items-center justify-center text-white text-2xl shadow-[0_0_30px_rgba(236,72,153,0.8)] animate-bounce mx-auto">🔓</div>
                           <div>
-                            <p className="text-pink-400 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Direct Gift For You</p>
+                            <p className="text-pink-400 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Exclusive Gift For You</p>
                             <p className="text-white text-base font-black italic leading-tight px-4 drop-shadow-lg">"{vaultItem.caption || 'জানু, আমার এই গোপন রসালো শরীরটি দেখবে?'}"</p>
                           </div>
                           <button 
@@ -176,27 +165,56 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, models }) => {
     await updateDoc(userRef, { credits: increment(-deduction) });
 
     setIsTyping(true);
+    
+    // Create history for better flow - increased to 20 messages for better memory
+    const history = messages.slice(-20).map(m => ({ 
+      role: m.sender === 'user' ? 'user' as const : 'model' as const, 
+      text: m.text || '' 
+    }));
+
     const vaultData = model.exclusiveContent.map(item => ({ id: item.id, caption: item.caption }));
     
-    // Pass current unlocked IDs so AI doesn't keep suggesting them
-    const aiResponseText = await getModelResponse(
-      model.name, 
-      finalMsg, 
-      model.bio, 
-      vaultData, 
-      sessionUnlockedIds, 
-      media ? { data: media.data, mimeType: media.mimeType } : undefined
-    );
-    
-    setIsTyping(false);
+    try {
+      const stream = await getModelResponseStream(
+        model.name, 
+        finalMsg, 
+        model.bio, 
+        vaultData, 
+        sessionUnlockedIds, 
+        media ? { data: media.data, mimeType: media.mimeType } : undefined,
+        history
+      );
+      
+      setIsTyping(false);
 
-    const newAiMsg: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      sender: 'model',
-      text: aiResponseText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages(prev => [...prev, newAiMsg]);
+      const aiMsgId = (Date.now() + 1).toString();
+      const newAiMsg: ChatMessage = {
+        id: aiMsgId,
+        sender: 'model',
+        text: '',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, newAiMsg]);
+
+      let fullText = '';
+      for await (const chunk of stream) {
+        const c = chunk as GenerateContentResponse;
+        if (c.text) {
+          fullText += c.text;
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, text: fullText } : m));
+        }
+      }
+    } catch (error) {
+      console.error("Chat Error:", error);
+      setIsTyping(false);
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 2).toString(),
+        sender: 'model',
+        text: "উফ জানু, নেটওয়ার্কে খুব সমস্যা হচ্ছে... তুমি কি আমার জন্য একটু ক্রেডিট নিয়ে আসবে? আমি তোমার জন্য ভিজে একাকার হয়ে আছি! ❤️",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
