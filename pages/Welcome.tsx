@@ -22,7 +22,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onAdminClick }) => {
           <div className="glass-3d relative p-2 rounded-[3.5rem] bg-white border border-pink-100 shadow-[0_20px_50px_rgba(236,72,153,0.2)] overflow-hidden">
              <div className="w-[300px] h-[400px] rounded-[3rem] overflow-hidden relative">
                 <img 
-                  src="https://scontent.fdac196-1.fna.fbcdn.net/v/t39.30808-6/622512409_122304655496027900_7596086974883310373_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=aa7b47&_nc_ohc=2RUx15eX-dYQ7kNvwGr3j9E&_nc_oc=AdkUC9efMHjC-2P_rECGrPp3Z7gi9MapmbntS_mYmSt6rcoPryT1zAalq_-8Aupul-I&_nc_zt=23&_nc_ht=scontent.fdac196-1.fna&_nc_gid=24AgcmyP9ecPeMSQmhZjYQ&oh=00_Afttkw2Am38KS2JvyFUafGlv9p7WgBFpgYVlutQPFVdDdw&oe=699355AD" 
+                  src="https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTHUbjW7y8vtpzkPn7-ViQrB4nXuzoEPqtjEO6CV-mdGcLyZEbs" 
                   alt="Live Model" 
                   className="w-full h-full object-cover"
                 />
